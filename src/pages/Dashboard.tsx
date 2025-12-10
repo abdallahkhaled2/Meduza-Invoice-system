@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { getInvoiceDetails } from '../lib/invoiceService';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -61,6 +62,16 @@ type TopClient = {
   total_revenue: number;
 };
 
+type Invoice = {
+  id: string;
+  invoice_no: string;
+  project_name: string;
+  invoice_date: string;
+  total: number;
+  status: string;
+  clients: { name: string } | null;
+};
+
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -69,9 +80,13 @@ const Dashboard: React.FC = () => {
   const [materialBreakdown, setMaterialBreakdown] = useState<MaterialBreakdown[]>([]);
   const [topClients, setTopClients] = useState<TopClient[]>([]);
   const [timeRange, setTimeRange] = useState<'7days' | '30days' | '90days' | 'all'>('30days');
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   useEffect(() => {
     loadAnalytics();
+    loadInvoicesList();
   }, [timeRange]);
 
   const loadAnalytics = async () => {
@@ -309,6 +324,41 @@ const Dashboard: React.FC = () => {
     setTopClients(
       Object.values(grouped).sort((a, b) => b.total_revenue - a.total_revenue).slice(0, 5)
     );
+  };
+
+  const loadInvoicesList = async () => {
+    const dateFilter = getDateFilter();
+
+    let query = supabase
+      .from('invoices')
+      .select('id, invoice_no, project_name, invoice_date, total, status, clients(name)')
+      .order('invoice_date', { ascending: false });
+
+    if (dateFilter) {
+      query = query.gte('invoice_date', dateFilter);
+    }
+
+    const { data } = await query;
+    const mappedData = (data || []).map((item: any) => ({
+      ...item,
+      clients: Array.isArray(item.clients) ? item.clients[0] : item.clients,
+    }));
+    setInvoices(mappedData as Invoice[]);
+  };
+
+  const handleViewInvoice = async (invoiceId: string) => {
+    const result = await getInvoiceDetails(invoiceId);
+    if (result.success) {
+      setSelectedInvoice(result.data);
+      setShowInvoiceModal(true);
+    } else {
+      alert('Failed to load invoice details');
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowInvoiceModal(false);
+    setSelectedInvoice(null);
   };
 
   if (loading) {
@@ -575,7 +625,109 @@ const Dashboard: React.FC = () => {
             </div>
           </ChartCard>
         )}
+
+        <ChartCard title="All Invoices" style={{ marginTop: 16 }}>
+          <div style={{ padding: '16px 0', maxHeight: 500, overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #374151' }}>
+                  <th style={{ textAlign: 'left', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                    Invoice No
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                    Project
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                    Client
+                  </th>
+                  <th style={{ textAlign: 'right', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                    Date
+                  </th>
+                  <th style={{ textAlign: 'right', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                    Total
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                    Status
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>
+                      No invoices found
+                    </td>
+                  </tr>
+                ) : (
+                  invoices.map((invoice) => (
+                    <tr key={invoice.id} style={{ borderBottom: '1px solid #1f2937' }}>
+                      <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14 }}>
+                        {invoice.invoice_no}
+                      </td>
+                      <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14 }}>
+                        {invoice.project_name || '-'}
+                      </td>
+                      <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14 }}>
+                        {invoice.clients?.name || '-'}
+                      </td>
+                      <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14, textAlign: 'right' }}>
+                        {invoice.invoice_date}
+                      </td>
+                      <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14, textAlign: 'right' }}>
+                        {Number(invoice.total).toLocaleString('en-EG', {
+                          style: 'currency',
+                          currency: 'EGP',
+                          minimumFractionDigits: 0,
+                        })}
+                      </td>
+                      <td style={{ padding: '12px 0', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 500,
+                          background: invoice.status === 'paid' ? '#065f46' : invoice.status === 'sent' ? '#1e40af' : '#374151',
+                          color: '#e5e7eb',
+                        }}>
+                          {invoice.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 0', textAlign: 'center' }}>
+                        <button
+                          onClick={() => handleViewInvoice(invoice.id)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            border: '1px solid #38bdf8',
+                            background: 'transparent',
+                            color: '#38bdf8',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </ChartCard>
       </div>
+
+      {showInvoiceModal && selectedInvoice && (
+        <InvoiceDetailsModal
+          invoice={selectedInvoice.invoice}
+          items={selectedInvoice.items}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 };
@@ -634,5 +786,282 @@ const EmptyState: React.FC<{ message: string }> = ({ message }) => (
     {message}
   </div>
 );
+
+const InvoiceDetailsModal: React.FC<{
+  invoice: any;
+  items: any[];
+  onClose: () => void;
+}> = ({ invoice, items, onClose }) => {
+  const calculateMaterialCost = (material: any, item: any) => {
+    return material.qty_per_item * item.qty * (item.unit_price / item.qty);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.8)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#020617',
+          border: '1px solid #1f2937',
+          borderRadius: 12,
+          padding: 32,
+          maxWidth: 1000,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 24,
+        }}>
+          <h2 style={{
+            fontSize: 24,
+            fontWeight: 600,
+            color: '#e5e7eb',
+            margin: 0,
+          }}>
+            Invoice Details: {invoice.invoice_no}
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#9ca3af',
+              fontSize: 24,
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 16,
+          marginBottom: 24,
+        }}>
+          <div>
+            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Client</div>
+            <div style={{ fontSize: 14, color: '#e5e7eb' }}>{invoice.clients?.name || 'N/A'}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Project</div>
+            <div style={{ fontSize: 14, color: '#e5e7eb' }}>{invoice.project_name || 'N/A'}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Date</div>
+            <div style={{ fontSize: 14, color: '#e5e7eb' }}>{invoice.invoice_date}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Status</div>
+            <div style={{ fontSize: 14, color: '#e5e7eb', textTransform: 'capitalize' }}>{invoice.status}</div>
+          </div>
+        </div>
+
+        <h3 style={{
+          fontSize: 18,
+          fontWeight: 600,
+          color: '#e5e7eb',
+          marginTop: 24,
+          marginBottom: 16,
+        }}>
+          Items & Materials Breakdown
+        </h3>
+
+        {items.map((item, idx) => (
+          <div
+            key={item.id}
+            style={{
+              background: '#0f172a',
+              border: '1px solid #1f2937',
+              borderRadius: 8,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 12,
+            }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: '#e5e7eb', marginBottom: 4 }}>
+                  {idx + 1}. {item.code}
+                </div>
+                <div style={{ fontSize: 13, color: '#9ca3af' }}>
+                  {item.description} | {item.dimensions}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 14, color: '#9ca3af' }}>
+                  Qty: {item.qty} × {Number(item.unit_price).toLocaleString('en-EG', {
+                    style: 'currency',
+                    currency: 'EGP',
+                    minimumFractionDigits: 0,
+                  })}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: '#38bdf8' }}>
+                  {Number(item.line_total).toLocaleString('en-EG', {
+                    style: 'currency',
+                    currency: 'EGP',
+                    minimumFractionDigits: 0,
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {item.materials && item.materials.length > 0 && (
+              <div style={{
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: '1px solid #1f2937',
+              }}>
+                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, fontWeight: 500 }}>
+                  Materials Used:
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                      <th style={{ textAlign: 'left', padding: '6px 0', color: '#6b7280', fontSize: 11 }}>
+                        Material
+                      </th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontSize: 11 }}>
+                        Qty/Item
+                      </th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontSize: 11 }}>
+                        Unit
+                      </th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontSize: 11 }}>
+                        Total Qty
+                      </th>
+                      <th style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontSize: 11 }}>
+                        Est. Cost
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {item.materials.map((mat: any, matIdx: number) => (
+                      <tr key={matIdx} style={{ borderBottom: '1px solid #0f172a' }}>
+                        <td style={{ padding: '8px 0', color: '#e5e7eb', fontSize: 13 }}>
+                          {mat.material_name}
+                        </td>
+                        <td style={{ padding: '8px 0', color: '#e5e7eb', fontSize: 13, textAlign: 'right' }}>
+                          {mat.qty_per_item}
+                        </td>
+                        <td style={{ padding: '8px 0', color: '#e5e7eb', fontSize: 13, textAlign: 'right' }}>
+                          {mat.unit}
+                        </td>
+                        <td style={{ padding: '8px 0', color: '#e5e7eb', fontSize: 13, textAlign: 'right' }}>
+                          {mat.total_qty}
+                        </td>
+                        <td style={{ padding: '8px 0', color: '#38bdf8', fontSize: 13, textAlign: 'right' }}>
+                          {calculateMaterialCost(mat, item).toLocaleString('en-EG', {
+                            style: 'currency',
+                            currency: 'EGP',
+                            minimumFractionDigits: 0,
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ))}
+
+        <div style={{
+          marginTop: 24,
+          paddingTop: 24,
+          borderTop: '2px solid #1f2937',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}>
+            <span style={{ fontSize: 14, color: '#9ca3af' }}>Subtotal</span>
+            <span style={{ fontSize: 14, color: '#e5e7eb' }}>
+              {Number(invoice.subtotal).toLocaleString('en-EG', {
+                style: 'currency',
+                currency: 'EGP',
+                minimumFractionDigits: 0,
+              })}
+            </span>
+          </div>
+          {invoice.discount > 0 && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+              <span style={{ fontSize: 14, color: '#9ca3af' }}>Discount</span>
+              <span style={{ fontSize: 14, color: '#e5e7eb' }}>
+                -{Number(invoice.discount).toLocaleString('en-EG', {
+                  style: 'currency',
+                  currency: 'EGP',
+                  minimumFractionDigits: 0,
+                })}
+              </span>
+            </div>
+          )}
+          {invoice.vat_rate > 0 && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+              <span style={{ fontSize: 14, color: '#9ca3af' }}>VAT ({invoice.vat_rate}%)</span>
+              <span style={{ fontSize: 14, color: '#e5e7eb' }}>
+                {Number(invoice.vat_amount).toLocaleString('en-EG', {
+                  style: 'currency',
+                  currency: 'EGP',
+                  minimumFractionDigits: 0,
+                })}
+              </span>
+            </div>
+          )}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: '1px solid #1f2937',
+          }}>
+            <span style={{ fontSize: 18, fontWeight: 600, color: '#e5e7eb' }}>Total</span>
+            <span style={{ fontSize: 18, fontWeight: 600, color: '#38bdf8' }}>
+              {Number(invoice.total).toLocaleString('en-EG', {
+                style: 'currency',
+                currency: 'EGP',
+                minimumFractionDigits: 0,
+              })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Dashboard;

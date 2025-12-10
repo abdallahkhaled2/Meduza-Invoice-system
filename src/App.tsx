@@ -355,12 +355,6 @@ const App: React.FC = () => {
     notes,
   });
 
-  const handlePreview = () => {
-    const payload = buildPayload();
-    localStorage.setItem('invoice-preview', JSON.stringify(payload));
-    window.open('/preview', '_blank', 'width=1024,height=1200');
-  };
-
   const saveInvoice = () => {
     const payload = buildPayload();
     localStorage.setItem('saved-invoice', JSON.stringify(payload));
@@ -368,6 +362,12 @@ const App: React.FC = () => {
   };
 
   const handleSaveToDatabase = async () => {
+    const confirmed = window.confirm('Are you sure you want to add this invoice into the system?');
+
+    if (!confirmed) {
+      return;
+    }
+
     const payload = buildPayload();
     const result = await saveToDatabase(payload);
 
@@ -863,12 +863,8 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        <button className="btn-primary" onClick={handleSaveToDatabase} style={{ marginBottom: 8 }}>
+        <button className="btn-primary" onClick={handleSaveToDatabase}>
           Save to Database
-        </button>
-
-        <button className="btn-primary" onClick={handlePreview}>
-          Preview Invoice (New Window)
         </button>
       </div>
 

@@ -189,3 +189,59 @@ export const deleteInvoice = async (invoiceId: string) => {
     return { success: false, error };
   }
 };
+
+export const getInvoiceDetails = async (invoiceId: string) => {
+  try {
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .select(`
+        *,
+        clients (
+          name,
+          company,
+          address,
+          phone,
+          email
+        )
+      `)
+      .eq('id', invoiceId)
+      .single();
+
+    if (invoiceError) throw invoiceError;
+
+    const { data: items, error: itemsError } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', invoiceId)
+      .order('sort_order', { ascending: true });
+
+    if (itemsError) throw itemsError;
+
+    const itemsWithMaterials = await Promise.all(
+      items.map(async (item) => {
+        const { data: materials, error: materialsError } = await supabase
+          .from('item_materials')
+          .select('*')
+          .eq('invoice_item_id', item.id);
+
+        if (materialsError) throw materialsError;
+
+        return {
+          ...item,
+          materials: materials || [],
+        };
+      })
+    );
+
+    return {
+      success: true,
+      data: {
+        invoice,
+        items: itemsWithMaterials,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching invoice details:', error);
+    return { success: false, error };
+  }
+};
