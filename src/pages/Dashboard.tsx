@@ -54,6 +54,8 @@ type MaterialBreakdown = {
   total_qty: number;
   unit: string;
   usage_count: number;
+  unit_cost: number;
+  total_cost: number;
 };
 
 type TopClient = {
@@ -239,7 +241,7 @@ const Dashboard: React.FC = () => {
 
     let query = supabase
       .from('item_materials')
-      .select('material_name, unit, total_qty, invoice_item_id');
+      .select('material_name, unit, total_qty, unit_cost, total_cost, invoice_item_id');
 
     if (dateFilter) {
       const { data: filteredInvoices } = await supabase
@@ -277,15 +279,18 @@ const Dashboard: React.FC = () => {
           unit: mat.unit,
           total_qty: 0,
           usage_count: 0,
+          unit_cost: Number(mat.unit_cost) || 0,
+          total_cost: 0,
         };
       }
       acc[key].total_qty += Number(mat.total_qty);
+      acc[key].total_cost += Number(mat.total_cost);
       acc[key].usage_count += 1;
       return acc;
     }, {} as Record<string, MaterialBreakdown>);
 
     setMaterialBreakdown(
-      Object.values(grouped).sort((a, b) => b.total_qty - a.total_qty).slice(0, 10)
+      Object.values(grouped).sort((a, b) => b.total_cost - a.total_cost).slice(0, 10)
     );
   };
 
@@ -416,6 +421,22 @@ const Dashboard: React.FC = () => {
     setSelectedInvoice(null);
   };
 
+  const handleStatusChange = async (invoiceId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('invoices')
+      .update({ status: newStatus })
+      .eq('id', invoiceId);
+
+    if (error) {
+      alert('Failed to update status');
+      console.error(error);
+      return;
+    }
+
+    await loadInvoicesList();
+    await loadSummary();
+  };
+
   if (loading) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
@@ -461,8 +482,8 @@ const Dashboard: React.FC = () => {
     labels: materialBreakdown.map(m => m.material_name),
     datasets: [
       {
-        label: 'Total Quantity',
-        data: materialBreakdown.map(m => m.total_qty),
+        label: 'Total Cost (EGP)',
+        data: materialBreakdown.map(m => m.total_cost),
         backgroundColor: 'rgba(56, 189, 248, 0.6)',
       },
     ],
@@ -582,7 +603,7 @@ const Dashboard: React.FC = () => {
           gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
           gap: 16,
         }}>
-          <ChartCard title="Top Materials Used">
+          <ChartCard title="Materials Used">
             {materialBreakdown.length > 0 ? (
               <Bar data={materialChartData} options={{
                 responsive: true,
@@ -654,6 +675,12 @@ const Dashboard: React.FC = () => {
                       Unit
                     </th>
                     <th style={{ textAlign: 'right', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                      Unit Cost
+                    </th>
+                    <th style={{ textAlign: 'right', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
+                      Total Cost
+                    </th>
+                    <th style={{ textAlign: 'right', padding: '8px 0', color: '#9ca3af', fontSize: 12 }}>
                       Used In
                     </th>
                   </tr>
@@ -669,6 +696,20 @@ const Dashboard: React.FC = () => {
                       </td>
                       <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14, textAlign: 'right' }}>
                         {material.unit}
+                      </td>
+                      <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14, textAlign: 'right' }}>
+                        {material.unit_cost.toLocaleString('en-EG', {
+                          style: 'currency',
+                          currency: 'EGP',
+                          minimumFractionDigits: 0,
+                        })}
+                      </td>
+                      <td style={{ padding: '12px 0', color: '#38bdf8', fontSize: 14, textAlign: 'right', fontWeight: 500 }}>
+                        {material.total_cost.toLocaleString('en-EG', {
+                          style: 'currency',
+                          currency: 'EGP',
+                          minimumFractionDigits: 0,
+                        })}
                       </td>
                       <td style={{ padding: '12px 0', color: '#e5e7eb', fontSize: 14, textAlign: 'right' }}>
                         {material.usage_count} items
@@ -739,16 +780,25 @@ const Dashboard: React.FC = () => {
                         })}
                       </td>
                       <td style={{ padding: '12px 0', textAlign: 'center' }}>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 500,
-                          background: invoice.status === 'paid' ? '#065f46' : invoice.status === 'sent' ? '#1e40af' : '#374151',
-                          color: '#e5e7eb',
-                        }}>
-                          {invoice.status}
-                        </span>
+                        <select
+                          value={invoice.status}
+                          onChange={(e) => handleStatusChange(invoice.id, e.target.value)}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: 4,
+                            fontSize: 11,
+                            fontWeight: 500,
+                            background: invoice.status === 'paid' ? '#065f46' : invoice.status === 'sent' ? '#1e40af' : '#374151',
+                            color: '#e5e7eb',
+                            border: '1px solid #374151',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="draft" style={{ background: '#020617', color: '#e5e7eb' }}>draft</option>
+                          <option value="sent" style={{ background: '#020617', color: '#e5e7eb' }}>sent</option>
+                          <option value="paid" style={{ background: '#020617', color: '#e5e7eb' }}>paid</option>
+                          <option value="cancelled" style={{ background: '#020617', color: '#e5e7eb' }}>cancelled</option>
+                        </select>
                       </td>
                       <td style={{ padding: '12px 0', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
