@@ -372,11 +372,11 @@ const App: React.FC = () => {
     const result = await saveToDatabase(payload);
 
     if (result.success) {
-      alert('Invoice saved to database successfully! ✅');
+      alert('Invoice saved to database successfully! ✅\n\nView analytics in the Dashboard tab.');
       localStorage.setItem('invoice-preview', JSON.stringify(payload));
     } else {
-      alert('Failed to save invoice to database. Please check your Supabase configuration.');
-      console.error(result.error);
+      alert('Failed to save invoice to database. Check the browser console for details.');
+      console.error('Save failed:', result.error);
     }
   };
 

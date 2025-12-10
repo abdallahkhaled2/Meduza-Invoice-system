@@ -148,8 +148,14 @@ export const saveInvoice = async (payload: InvoicePayload) => {
     }
 
     return { success: true, invoiceId };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving invoice:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      code: error?.code
+    });
     return { success: false, error };
   }
 };
