@@ -85,11 +85,18 @@ const Dashboard: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedMaterialInvoiceId, setSelectedMaterialInvoiceId] = useState<string>('');
 
   useEffect(() => {
     loadAnalytics();
     loadInvoicesList();
   }, [timeRange]);
+
+  useEffect(() => {
+    if (selectedMaterialInvoiceId) {
+      loadMaterialsForInvoice(selectedMaterialInvoiceId);
+    }
+  }, [selectedMaterialInvoiceId]);
 
   const loadAnalytics = async () => {
     setLoading(true);
@@ -291,6 +298,52 @@ const Dashboard: React.FC = () => {
 
     setMaterialBreakdown(
       Object.values(grouped).sort((a, b) => b.total_cost - a.total_cost).slice(0, 10)
+    );
+  };
+
+  const loadMaterialsForInvoice = async (invoiceId: string) => {
+    const { data: items } = await supabase
+      .from('invoice_items')
+      .select('id')
+      .eq('invoice_id', invoiceId);
+
+    if (!items || items.length === 0) {
+      setMaterialBreakdown([]);
+      return;
+    }
+
+    const itemIds = items.map(item => item.id);
+
+    const { data } = await supabase
+      .from('item_materials')
+      .select('material_name, unit, total_qty, unit_cost, total_cost, invoice_item_id')
+      .in('invoice_item_id', itemIds);
+
+    if (!data) {
+      setMaterialBreakdown([]);
+      return;
+    }
+
+    const grouped = data.reduce((acc, mat) => {
+      const key = `${mat.material_name}_${mat.unit}`;
+      if (!acc[key]) {
+        acc[key] = {
+          material_name: mat.material_name,
+          unit: mat.unit,
+          total_qty: 0,
+          usage_count: 0,
+          unit_cost: Number(mat.unit_cost) || 0,
+          total_cost: 0,
+        };
+      }
+      acc[key].total_qty += Number(mat.total_qty);
+      acc[key].total_cost += Number(mat.total_cost);
+      acc[key].usage_count += 1;
+      return acc;
+    }, {} as Record<string, MaterialBreakdown>);
+
+    setMaterialBreakdown(
+      Object.values(grouped).sort((a, b) => b.total_cost - a.total_cost)
     );
   };
 
@@ -659,9 +712,49 @@ const Dashboard: React.FC = () => {
           </ChartCard>
         </div>
 
-        {materialBreakdown.length > 0 && (
-          <ChartCard title="Material Breakdown (Detailed)" style={{ marginTop: 16 }}>
-            <div style={{ padding: '16px 0' }}>
+        <ChartCard title="Material Breakdown (Detailed)" style={{ marginTop: 16 }}>
+          <div style={{ padding: '16px 0' }}>
+            <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <label style={{ color: '#9ca3af', fontSize: 14 }}>Select Invoice:</label>
+              <select
+                value={selectedMaterialInvoiceId}
+                onChange={(e) => setSelectedMaterialInvoiceId(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  background: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: 6,
+                  color: '#e5e7eb',
+                  fontSize: 14,
+                  minWidth: 300,
+                }}
+              >
+                <option value="">-- Select an invoice --</option>
+                {invoices.map((inv) => (
+                  <option key={inv.id} value={inv.id}>
+                    {inv.invoice_no} - {inv.project_name} ({new Date(inv.invoice_date).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+              {selectedMaterialInvoiceId && (
+                <button
+                  onClick={() => setSelectedMaterialInvoiceId('')}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#374151',
+                    border: 'none',
+                    borderRadius: 6,
+                    color: '#e5e7eb',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {materialBreakdown.length > 0 ? (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #374151' }}>
@@ -718,9 +811,15 @@ const Dashboard: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </ChartCard>
-        )}
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
+                {selectedMaterialInvoiceId
+                  ? 'No materials found for this invoice'
+                  : 'Please select an invoice to view material breakdown'}
+              </div>
+            )}
+          </div>
+        </ChartCard>
 
         <ChartCard title="All Invoices" style={{ marginTop: 16 }}>
           <div style={{ padding: '16px 0', maxHeight: 500, overflowY: 'auto' }}>
