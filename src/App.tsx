@@ -378,6 +378,33 @@ const App: React.FC = () => {
     alert('Invoice saved locally ✅');
   };
 
+  const clearForm = () => {
+    const confirmed = window.confirm('Are you sure you want to clear all invoice data?');
+    if (!confirmed) return;
+
+    localStorage.removeItem('invoice-draft');
+    localStorage.removeItem('invoice-preview');
+
+    setClient({
+      name: 'Client Name',
+      company: 'Client Company',
+      address: 'Client Billing Address',
+      phone: '+20 100 000 0000',
+      email: 'client@example.com',
+      siteAddress: 'Site / Delivery Address',
+    });
+    setMeta({
+      invoiceNo: '',
+      date: new Date().toISOString().slice(0, 10),
+      dueDate: '',
+      projectName: 'Project Name',
+    });
+    setItems([]);
+    setVatRate(14);
+    setDiscount(0);
+    setNotes('');
+  };
+
   const handleSaveToDatabase = async () => {
     const confirmed = window.confirm('Are you sure you want to add this invoice into the system?');
 
@@ -390,28 +417,7 @@ const App: React.FC = () => {
 
     if (result.success) {
       alert(`Invoice saved to database successfully! ✅\n\nInvoice Number: ${result.invoiceNo}\n\nView analytics in the Dashboard tab.`);
-
-      localStorage.removeItem('invoice-draft');
-      localStorage.removeItem('invoice-preview');
-
-      setClient({
-        name: 'Client Name',
-        company: 'Client Company',
-        address: 'Client Billing Address',
-        phone: '+20 100 000 0000',
-        email: 'client@example.com',
-        siteAddress: 'Site / Delivery Address',
-      });
-      setMeta({
-        invoiceNo: '',
-        date: new Date().toISOString().slice(0, 10),
-        dueDate: '',
-        projectName: 'Project Name',
-      });
-      setItems([]);
-      setVatRate(14);
-      setDiscount(0);
-      setNotes('');
+      clearForm();
     } else {
       alert('Failed to save invoice to database. Check the browser console for details.');
       console.error('Save failed:', result.error);
@@ -893,6 +899,9 @@ const App: React.FC = () => {
           </button>
           <button className="btn-outline" onClick={loadInvoice}>
             Load Local
+          </button>
+          <button className="btn-outline" onClick={clearForm} style={{ marginLeft: 'auto', color: '#dc2626' }}>
+            Clear Form
           </button>
         </div>
 
@@ -1554,6 +1563,68 @@ const DoorCostModal: React.FC<DoorCostModalProps> = ({
     return parts.join(' – ');
   };
 
+  const materials: MaterialRow[] = [];
+
+  if (frameVolumeM3 > 0) {
+    let woodLabel = 'Mouski';
+    if (doorCost.woodType === 'Zan') woodLabel = 'Zan (Beech)';
+    else if (doorCost.woodType === 'Aro') woodLabel = 'Aro (Oak)';
+    else if (doorCost.woodType === 'BeechPine') woodLabel = 'Beech pine';
+
+    materials.push({
+      name: `Natural wood frame (${woodLabel})`,
+      unit: 'm³',
+      qty: parseFloat(frameVolumeM3.toFixed(3)),
+    });
+  }
+
+  if (mdfSheetsNeeded > 0) {
+    materials.push({
+      name: 'MDF 10mm (door faces)',
+      unit: 'sheet',
+      qty: parseFloat(mdfSheetsNeeded.toFixed(3)),
+    });
+  }
+
+  if (doorCost.veneerType === 'Walnut' || doorCost.veneerType === 'Oak' || doorCost.veneerType === 'Beech') {
+    materials.push({
+      name: `${doorCost.veneerType} veneer`,
+      unit: 'm²',
+      qty: parseFloat(areaBothFacesM2.toFixed(3)),
+    });
+  } else if (doorCost.veneerType === 'HPL' || doorCost.veneerType === 'LPL') {
+    const veneerSheetsNeeded = areaBothFacesM2 / sheetAreaM2;
+    materials.push({
+      name: `${doorCost.veneerType} laminate`,
+      unit: 'sheet',
+      qty: parseFloat(veneerSheetsNeeded.toFixed(3)),
+    });
+  }
+
+  if (doorCost.glassAreaM2 > 0 && (doorCost.glassType === 'Glass6' || doorCost.glassType === 'Glass10')) {
+    materials.push({
+      name: `Glass ${doorCost.glassType === 'Glass6' ? '6mm' : '10mm'}`,
+      unit: 'm²',
+      qty: parseFloat(doorCost.glassAreaM2.toFixed(3)),
+    });
+  }
+
+  if (doorCost.hasSteelChassis) {
+    materials.push({
+      name: 'Steel chassis',
+      unit: 'piece',
+      qty: 1,
+    });
+  }
+
+  if (doorCost.laborHours > 0) {
+    materials.push({
+      name: 'Labor',
+      unit: 'hour',
+      qty: doorCost.laborHours,
+    });
+  }
+
   const handleApplyClick = () => {
     const desc = buildDescription();
     const dims = `${doorCost.heightCm}×${doorCost.widthCm}×${doorCost.thicknessCm} cm`;
@@ -1561,6 +1632,7 @@ const DoorCostModal: React.FC<DoorCostModalProps> = ({
       price: sellingPrice,
       description: desc,
       dimensions: dims,
+      materials,
     });
   };
 
@@ -2002,12 +2074,68 @@ const SeatingCostModal: React.FC<SeatingCostModalProps> = ({
     return parts.join(' – ');
   };
 
+  const materials: MaterialRow[] = [];
+
+  if (state.solidVolumeM3 > 0) {
+    let woodLabel = 'Mouski';
+    if (state.woodType === 'Zan') woodLabel = 'Zan (Beech)';
+    else if (state.woodType === 'Aro') woodLabel = 'Aro (Oak)';
+    else if (state.woodType === 'BeechPine') woodLabel = 'Beech pine';
+
+    materials.push({
+      name: `Natural solid wood (${woodLabel})`,
+      unit: 'm³',
+      qty: parseFloat(state.solidVolumeM3.toFixed(3)),
+    });
+  }
+
+  if (state.hasPly && state.plySheets > 0) {
+    materials.push({
+      name: `Plywood ${state.plyThickness}mm`,
+      unit: 'sheet',
+      qty: state.plySheets,
+    });
+  }
+
+  if (state.veneerType !== 'None' && state.areaM2 > 0) {
+    materials.push({
+      name: `${state.veneerType} veneer`,
+      unit: 'm²',
+      qty: parseFloat(state.areaM2.toFixed(3)),
+    });
+  }
+
+  if (state.upholsteryType !== 'None' && state.fabricMeters > 0) {
+    materials.push({
+      name: `Fabric (${state.fabricType} grade)`,
+      unit: 'meter',
+      qty: state.fabricMeters,
+    });
+  }
+
+  if (state.hasSteelChassis) {
+    materials.push({
+      name: 'Steel chassis',
+      unit: 'piece',
+      qty: 1,
+    });
+  }
+
+  if (state.laborHours > 0) {
+    materials.push({
+      name: 'Labor',
+      unit: 'hour',
+      qty: state.laborHours,
+    });
+  }
+
   const handleApplyClick = () => {
     const desc = buildDescription();
     onApply({
       price: sellingPrice,
       description: desc,
       dimensions: '',
+      materials,
     });
   };
 
@@ -2462,6 +2590,67 @@ const TableCostModal: React.FC<TableCostModalProps> = ({
     return parts.join(' – ');
   };
 
+  const materials: MaterialRow[] = [];
+
+  if (state.legMaterial === 'Wood' && legsVolumeM3 > 0) {
+    let woodLabel = 'Mouski';
+    if (state.woodType === 'Zan') woodLabel = 'Zan (Beech)';
+    else if (state.woodType === 'Aro') woodLabel = 'Aro (Oak)';
+    else if (state.woodType === 'BeechPine') woodLabel = 'Beech pine';
+
+    materials.push({
+      name: `Table legs wood (${woodLabel})`,
+      unit: 'm³',
+      qty: parseFloat(legsVolumeM3.toFixed(3)),
+    });
+  }
+
+  if (state.topMaterial === 'MDF16' || state.topMaterial === 'MDF21' || state.topMaterial === 'Blockboard18') {
+    const sheets = topAreaM2 / sheetAreaM2;
+    let topLabel = 'MDF 16mm';
+    if (state.topMaterial === 'MDF21') topLabel = 'MDF 21mm';
+    else if (state.topMaterial === 'Blockboard18') topLabel = 'Blockboard 18mm';
+
+    materials.push({
+      name: `Table top (${topLabel})`,
+      unit: 'sheet',
+      qty: parseFloat(sheets.toFixed(3)),
+    });
+  }
+
+  if (state.topMaterial === 'Marble') {
+    materials.push({
+      name: 'Marble top',
+      unit: 'm²',
+      qty: parseFloat(topAreaM2.toFixed(3)),
+    });
+  }
+
+  if (state.topMaterial === 'Glass6' || state.topMaterial === 'Glass10') {
+    const thickness = state.topMaterial === 'Glass6' ? '6mm' : '10mm';
+    materials.push({
+      name: `Glass top ${thickness}`,
+      unit: 'm²',
+      qty: parseFloat(topAreaM2.toFixed(3)),
+    });
+  }
+
+  if (isWoodTop && state.veneerType !== 'None') {
+    materials.push({
+      name: `${state.veneerType} veneer`,
+      unit: 'm²',
+      qty: parseFloat(topAreaM2.toFixed(3)),
+    });
+  }
+
+  if (state.laborHours > 0) {
+    materials.push({
+      name: 'Labor',
+      unit: 'hour',
+      qty: state.laborHours,
+    });
+  }
+
   const handleApplyClick = () => {
     const desc = buildDescription();
     const dims = `${state.lengthCm}×${state.widthCm}×${state.heightCm} cm`;
@@ -2469,6 +2658,7 @@ const TableCostModal: React.FC<TableCostModalProps> = ({
       price: sellingPrice,
       description: desc,
       dimensions: dims,
+      materials,
     });
   };
 
@@ -2838,12 +3028,52 @@ const SofaCostModal: React.FC<SofaCostModalProps> = ({
     return parts.join(' – ');
   };
 
+  const materials: MaterialRow[] = [];
+
+  if (woodVolumeM3 > 0) {
+    let woodLabel = 'Mouski';
+    if (state.woodType === 'Zan') woodLabel = 'Zan (Beech)';
+    else if (state.woodType === 'Aro') woodLabel = 'Aro (Oak)';
+    else if (state.woodType === 'BeechPine') woodLabel = 'Beech pine';
+
+    materials.push({
+      name: `Natural solid wood (${woodLabel})`,
+      unit: 'm³',
+      qty: parseFloat(woodVolumeM3.toFixed(3)),
+    });
+  }
+
+  if (state.veneerType !== 'None' && state.veneerAreaM2 > 0) {
+    materials.push({
+      name: `${state.veneerType} veneer`,
+      unit: 'm²',
+      qty: parseFloat(state.veneerAreaM2.toFixed(3)),
+    });
+  }
+
+  if (state.upholsteryQuality !== 'None' && state.fabricMeters > 0) {
+    materials.push({
+      name: `Fabric (${state.fabricGrade} grade)`,
+      unit: 'meter',
+      qty: state.fabricMeters,
+    });
+  }
+
+  if (state.laborHours > 0) {
+    materials.push({
+      name: 'Labor',
+      unit: 'hour',
+      qty: state.laborHours,
+    });
+  }
+
   const handleApplyClick = () => {
     const desc = buildDescription();
     onApply({
       price: sellingPrice,
       description: desc,
       dimensions: '',
+      materials,
     });
   };
 
