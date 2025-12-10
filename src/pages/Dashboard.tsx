@@ -408,7 +408,7 @@ const Dashboard: React.FC = () => {
     };
 
     localStorage.setItem('invoice-preview', JSON.stringify(previewPayload));
-    window.open('/preview', '_blank');
+    window.open('/preview?standalone=true', '_blank');
   };
 
   const handleCloseModal = () => {

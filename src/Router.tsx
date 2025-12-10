@@ -7,7 +7,9 @@ import InvoicePreview from './InvoicePreview';
 
 const RouterContent: React.FC = () => {
   const location = useLocation();
-  const showNavigation = location.pathname !== '/preview';
+  const searchParams = new URLSearchParams(location.search);
+  const isStandalone = searchParams.get('standalone') === 'true';
+  const showNavigation = !isStandalone;
 
   return (
     <>
