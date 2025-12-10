@@ -860,7 +860,7 @@ const App: React.FC = () => {
         </div>
 
         <button className="btn-primary" onClick={handleSaveToDatabase}>
-          Save to Database
+          Submit
         </button>
       </div>
 
