@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import './App.css';
 import { saveInvoice as saveToDatabase } from './lib/invoiceService';
@@ -268,6 +268,11 @@ const App: React.FC = () => {
   const [cabinetModalItemId, setCabinetModalItemId] = useState<number | null>(
     null
   );
+
+  // Clear preview data on mount
+  useEffect(() => {
+    localStorage.removeItem('invoice-preview');
+  }, []);
 
   // ===== Handlers =====
   const updateItem = (id: number, field: keyof InvoiceItem, value: string) => {
