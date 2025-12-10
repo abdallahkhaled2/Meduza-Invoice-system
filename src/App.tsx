@@ -2,73 +2,15 @@ import React, { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import './App.css';
 import { saveInvoice as saveToDatabase } from './lib/invoiceService';
-
-type MaterialRow = {
-  name: string;
-  unit: string;
-  qty: number;
-};
-
-export type InvoiceItem = {
-  id: number;
-  category: ItemCategory;
-  code: string;
-  description: string;
-  dimensions: string;
-  qty: number;
-  unitPrice: number;
-  image?: string;
-  materials?: MaterialRow[]; // ✅ دلوقتي النوع معروف
-};
-
-export type ItemCategory =
-  | 'Door'
-  | 'Dining chair'
-  | 'Arm chair'
-  | 'Bar stool'
-  | 'Bench'
-  | 'Dining table'
-  | 'Coffee table'
-  | 'Side table'
-  | 'Console table'
-  | 'Sofa straight'
-  | 'Sofa curved'
-  | 'Cabinet'
-  | 'Custom furniture';
-
-export type CompanyInfo = {
-  name: string;
-  logoUrl: string;
-  address: string;
-  phone: string;
-  email: string;
-};
-
-export type ClientInfo = {
-  name: string;
-  company: string;
-  address: string;
-  phone: string;
-  email: string;
-  siteAddress: string;
-};
-
-export type InvoiceMeta = {
-  invoiceNo: string;
-  date: string;
-  dueDate: string;
-  projectName: string;
-};
-
-export type InvoicePayload = {
-  company: CompanyInfo;
-  client: ClientInfo;
-  meta: InvoiceMeta;
-  items: InvoiceItem[];
-  vatRate: number;
-  discount: number;
-  notes: string;
-};
+import type {
+  ItemCategory,
+  CompanyInfo,
+  ClientInfo,
+  InvoiceMeta,
+  InvoiceItem,
+  InvoicePayload,
+  MaterialRow,
+} from './types';
 
 type PricingConfig = {
   // Natural solid wood (EGP / m³)
@@ -253,19 +195,19 @@ const App: React.FC = () => {
 
   // ===== Costing modals =====
   const [doorModalOpen, setDoorModalOpen] = useState(false);
-  const [doorModalItemId, setDoorModalItemId] = useState<number | null>(null);
+  const [doorModalItemId, setDoorModalItemId] = useState<string | number | null>(null);
 
   const [seatModalOpen, setSeatModalOpen] = useState(false);
-  const [seatModalItemId, setSeatModalItemId] = useState<number | null>(null);
+  const [seatModalItemId, setSeatModalItemId] = useState<string | number | null>(null);
 
   const [tableModalOpen, setTableModalOpen] = useState(false);
-  const [tableModalItemId, setTableModalItemId] = useState<number | null>(null);
+  const [tableModalItemId, setTableModalItemId] = useState<string | number | null>(null);
 
   const [sofaModalOpen, setSofaModalOpen] = useState(false);
-  const [sofaModalItemId, setSofaModalItemId] = useState<number | null>(null);
+  const [sofaModalItemId, setSofaModalItemId] = useState<string | number | null>(null);
 
   const [cabinetModalOpen, setCabinetModalOpen] = useState(false);
-  const [cabinetModalItemId, setCabinetModalItemId] = useState<number | null>(
+  const [cabinetModalItemId, setCabinetModalItemId] = useState<string | number | null>(
     null
   );
 
@@ -302,7 +244,7 @@ const App: React.FC = () => {
   }, [company, client, meta, items, vatRate, discount, notes]);
 
   // ===== Handlers =====
-  const updateItem = (id: number, field: keyof InvoiceItem, value: string) => {
+  const updateItem = (id: string | number, field: keyof InvoiceItem, value: string) => {
     setItems((prev) =>
       prev.map((item) =>
         item.id === id
@@ -344,11 +286,11 @@ const App: React.FC = () => {
     setItems((prev) => [...prev, newItem]);
   };
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: string | number) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleImageUpload = (id: number, e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (id: string | number, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();

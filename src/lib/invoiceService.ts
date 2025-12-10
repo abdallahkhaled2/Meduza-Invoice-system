@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { InvoicePayload } from '../App';
+import type { InvoicePayload, InvoiceItem } from '../types';
 
 export const generateInvoiceNumber = async (): Promise<string> => {
   const currentYear = new Date().getFullYear();
@@ -26,7 +26,7 @@ export const saveInvoice = async (payload: InvoicePayload) => {
   try {
     const { client, meta, items, vatRate, discount, notes } = payload;
 
-    const subtotal = items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+    const subtotal = items.reduce((sum: number, item: InvoiceItem) => sum + item.qty * item.unitPrice, 0);
     const taxableAmount = Math.max(subtotal - discount, 0);
     const vatAmount = (taxableAmount * vatRate) / 100;
     const total = taxableAmount + vatAmount;
@@ -109,7 +109,7 @@ export const saveInvoice = async (payload: InvoicePayload) => {
       if (itemError) throw itemError;
 
       if (item.materials && item.materials.length > 0) {
-        const materialsToInsert = item.materials.map(mat => ({
+        const materialsToInsert = item.materials.map((mat) => ({
           invoice_item_id: invoiceItem.id,
           material_name: mat.name,
           unit: mat.unit,

@@ -6,16 +6,10 @@ import type {
   InvoiceMeta,
   InvoiceItem,
   InvoicePayload,
-} from './App';
+  MaterialRow,
+} from './types';
 
 type PreviewData = InvoicePayload;
-
-// نفس MaterialRow اللي في App.tsx
-type MaterialRow = {
-  name: string;
-  unit: string;
-  qty: number;
-};
 
 const emptyCompany: CompanyInfo = {
   name: '',
