@@ -187,18 +187,7 @@ const App: React.FC = () => {
   const [discount, setDiscount] = useState<number>(0);
 
   // ===== Items =====
-  const [items, setItems] = useState<InvoiceItem[]>([
-    {
-      id: 1,
-      category: 'Door',
-      code: 'Solid door',
-      description:
-        'Wood: Mouski – Veneer: Oak veneer – Finish: PU matte – Fabric: none',
-      dimensions: '220×90×4 cm',
-      qty: 1,
-      unitPrice: 8500,
-    },
-  ]);
+  const [items, setItems] = useState<InvoiceItem[]>([]);
 
   const [notes, setNotes] = useState<string>(
     '- Production lead time: 25–30 working days from advance payment.\n' +
