@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import './App.css';
-import { saveInvoice as saveToDatabase } from './lib/invoiceService';
+import { saveInvoice as saveToDatabase, getInvoiceDetails } from './lib/invoiceService';
 import type {
   ItemCategory,
   CompanyInfo,
@@ -214,20 +214,75 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.removeItem('invoice-preview');
 
-    const draft = localStorage.getItem('invoice-draft');
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed.client) setClient(parsed.client);
-        if (parsed.meta) setMeta(parsed.meta);
-        if (parsed.items) setItems(parsed.items);
-        if (parsed.vatRate !== undefined) setVatRate(parsed.vatRate);
-        if (parsed.discount !== undefined) setDiscount(parsed.discount);
-        if (parsed.notes !== undefined) setNotes(parsed.notes);
-      } catch (err) {
-        console.error('Failed to load draft:', err);
+    const loadInvoiceFromUrl = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const invoiceId = urlParams.get('id');
+
+      if (invoiceId) {
+        const result = await getInvoiceDetails(invoiceId);
+        if (result.success && result.data) {
+          const { invoice, items: invoiceItems } = result.data;
+
+          setClient({
+            name: invoice.clients?.name || 'Client Name',
+            company: invoice.clients?.company || 'Client Company',
+            address: invoice.clients?.address || 'Client Billing Address',
+            phone: invoice.clients?.phone || '+20 100 000 0000',
+            email: invoice.clients?.email || 'client@example.com',
+            siteAddress: invoice.clients?.site_address || 'Site / Delivery Address',
+          });
+
+          setMeta({
+            invoiceNo: invoice.invoice_no || '',
+            date: invoice.invoice_date || new Date().toISOString().slice(0, 10),
+            dueDate: invoice.due_date || '',
+            projectName: invoice.project_name || 'Project Name',
+          });
+
+          const formattedItems: InvoiceItem[] = invoiceItems.map((item: any) => ({
+            id: item.id,
+            category: item.category || 'Custom furniture',
+            code: item.code || '',
+            description: item.description || '',
+            dimensions: item.dimensions || '',
+            qty: item.qty || 1,
+            unitPrice: Number(item.unit_price) || 0,
+            image: item.image_url || undefined,
+            materials: (item.materials || []).map((mat: any) => ({
+              name: mat.material_name,
+              unit: mat.unit,
+              qty: mat.qty_per_item,
+            })),
+          }));
+
+          setItems(formattedItems);
+          setVatRate(invoice.vat_rate || 14);
+          setDiscount(invoice.discount || 0);
+          setNotes(invoice.notes || '');
+
+          return;
+        } else {
+          alert('Failed to load invoice');
+        }
       }
-    }
+
+      const draft = localStorage.getItem('invoice-draft');
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          if (parsed.client) setClient(parsed.client);
+          if (parsed.meta) setMeta(parsed.meta);
+          if (parsed.items) setItems(parsed.items);
+          if (parsed.vatRate !== undefined) setVatRate(parsed.vatRate);
+          if (parsed.discount !== undefined) setDiscount(parsed.discount);
+          if (parsed.notes !== undefined) setNotes(parsed.notes);
+        } catch (err) {
+          console.error('Failed to load draft:', err);
+        }
+      }
+    };
+
+    loadInvoiceFromUrl();
   }, []);
 
   useEffect(() => {
@@ -320,10 +375,7 @@ const App: React.FC = () => {
     alert('Invoice saved locally ✅');
   };
 
-  const clearForm = () => {
-    const confirmed = window.confirm('Are you sure you want to clear all invoice data?');
-    if (!confirmed) return;
-
+  const clearFormSilently = () => {
     localStorage.removeItem('invoice-draft');
     localStorage.removeItem('invoice-preview');
 
@@ -347,6 +399,12 @@ const App: React.FC = () => {
     setNotes('');
   };
 
+  const clearForm = () => {
+    const confirmed = window.confirm('Are you sure you want to clear all invoice data?');
+    if (!confirmed) return;
+    clearFormSilently();
+  };
+
   const handleSaveToDatabase = async () => {
     const confirmed = window.confirm('Are you sure you want to add this invoice into the system?');
 
@@ -359,7 +417,7 @@ const App: React.FC = () => {
 
     if (result.success) {
       alert(`Invoice saved to database successfully! ✅\n\nInvoice Number: ${result.invoiceNo}\n\nView analytics in the Dashboard tab.`);
-      clearForm();
+      clearFormSilently();
     } else {
       alert('Failed to save invoice to database. Check the browser console for details.');
       console.error('Save failed:', result.error);
