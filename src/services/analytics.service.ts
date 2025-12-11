@@ -277,4 +277,58 @@ export class AnalyticsService {
 
     return Object.values(grouped).sort((a, b) => b.total_revenue - a.total_revenue).slice(0, 5);
   }
+
+  static async getMaterialBreakdownTotalsPerInvoice(timeRange: TimeRange): Promise<Map<string, number>> {
+    const dateFilter = this.getDateFilter(timeRange);
+
+    let invoiceQuery = supabase.from('invoices').select('id');
+    if (dateFilter) {
+      invoiceQuery = invoiceQuery.gte('invoice_date', dateFilter.toISOString().split('T')[0]);
+    }
+
+    const { data: invoices } = await invoiceQuery;
+
+    if (!invoices || invoices.length === 0) {
+      return new Map();
+    }
+
+    const invoiceIds = invoices.map((inv) => inv.id);
+
+    const { data: items } = await supabase
+      .from('invoice_items')
+      .select('id, invoice_id')
+      .in('invoice_id', invoiceIds);
+
+    if (!items || items.length === 0) {
+      return new Map();
+    }
+
+    const itemIds = items.map((item) => item.id);
+
+    const { data: materials } = await supabase
+      .from('item_materials')
+      .select('invoice_item_id, total_cost')
+      .in('invoice_item_id', itemIds);
+
+    if (!materials || materials.length === 0) {
+      return new Map();
+    }
+
+    const itemToInvoiceMap = new Map<string, string>();
+    items.forEach((item) => {
+      itemToInvoiceMap.set(item.id, item.invoice_id);
+    });
+
+    const totalsMap = new Map<string, number>();
+
+    materials.forEach((mat) => {
+      const invoiceId = itemToInvoiceMap.get(mat.invoice_item_id);
+      if (invoiceId) {
+        const currentTotal = totalsMap.get(invoiceId) || 0;
+        totalsMap.set(invoiceId, currentTotal + Number(mat.total_cost || 0));
+      }
+    });
+
+    return totalsMap;
+  }
 }

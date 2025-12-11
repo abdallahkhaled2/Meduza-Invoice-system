@@ -35,6 +35,7 @@ export interface InvoiceMeta {
   date: string;
   dueDate: string;
   projectName: string;
+  orderClass?: string;
 }
 
 export interface MaterialRow {
@@ -76,7 +77,9 @@ export interface Invoice {
   invoice_no: string;
   project_name: string;
   invoice_date: string;
+  due_date?: string;
   total: number;
   status: string;
+  order_class?: string;
   clients: { name: string } | null;
 }

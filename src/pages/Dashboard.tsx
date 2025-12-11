@@ -50,6 +50,7 @@ const Dashboard: React.FC = () => {
     materialBreakdown,
     topClients,
     invoices,
+    materialBreakdownTotals,
     loadMaterialsForInvoice,
     updateLocalInvoiceStatus,
     refetchData,
@@ -260,6 +261,7 @@ const Dashboard: React.FC = () => {
         <ChartCard title="All Invoices" style={{ marginTop: 16 }}>
           <InvoicesTable
             invoices={invoices}
+            materialBreakdownTotals={materialBreakdownTotals}
             onStatusChange={handleStatusChange}
             onViewInvoice={handleViewInvoice}
             onPreviewInvoice={handlePreviewInvoice}

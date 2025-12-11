@@ -126,6 +126,7 @@ const App: React.FC = () => {
     date: new Date().toISOString().slice(0, 10),
     dueDate: '',
     projectName: 'Project Name',
+    orderClass: 'B2B',
   });
 
   // ===== Financial =====
@@ -346,6 +347,7 @@ const App: React.FC = () => {
       date: new Date().toISOString().slice(0, 10),
       dueDate: '',
       projectName: 'Project Name',
+      orderClass: 'B2B',
     });
     setItems([]);
     setVatRate(14);
@@ -497,16 +499,7 @@ const App: React.FC = () => {
     setSofaModalOpen(false);
   };
 
-  const validateDimensions = (item: InvoiceItem) => {
-    if (!item.dimensions || !item.dimensions.trim()) {
-      toast.warning('Dimensions Required', 'Please enter item dimensions first (H x W x T cm).');
-      return false;
-    }
-    return true;
-  };
-
   const openCosting = (item: InvoiceItem) => {
-    if (!validateDimensions(item)) return;
 
     if (item.category === 'Door') {
       setDoorModalItemId(item.id);
@@ -643,6 +636,17 @@ const App: React.FC = () => {
             value={meta.projectName}
             onChange={(v) => setMeta({ ...meta, projectName: v })}
           />
+          <label className="field">
+            <span className="field-label">Order Class</span>
+            <select
+              className="input"
+              value={meta.orderClass || 'B2B'}
+              onChange={(e) => setMeta({ ...meta, orderClass: e.target.value })}
+            >
+              <option value="B2B">B2B</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </label>
         </section>
 
         {/* Quick add templates */}

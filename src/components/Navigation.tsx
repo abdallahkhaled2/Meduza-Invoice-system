@@ -13,7 +13,7 @@ const Navigation: React.FC = () => {
   };
 
   return (
-    <nav style={{
+    <nav className="no-print" style={{
       background: '#020617',
       borderBottom: '1px solid #1f2937',
       padding: '0 24px',

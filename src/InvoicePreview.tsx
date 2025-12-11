@@ -35,6 +35,7 @@ const emptyMeta: InvoiceMeta = {
   date: '',
   dueDate: '',
   projectName: '',
+  orderClass: 'B2B',
 };
 
 const InvoicePreview: React.FC = () => {

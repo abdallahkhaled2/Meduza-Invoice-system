@@ -78,6 +78,7 @@ export const saveInvoice = async (payload: InvoicePayload) => {
         total,
         notes,
         status: 'draft',
+        order_class: meta.orderClass || 'B2B',
       })
       .select()
       .single();

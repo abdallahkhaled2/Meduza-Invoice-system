@@ -19,17 +19,19 @@ export const useDashboardData = (timeRange: TimeRange) => {
   const [materialBreakdown, setMaterialBreakdown] = useState<MaterialBreakdown[]>([]);
   const [topClients, setTopClients] = useState<TopClient[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [materialBreakdownTotals, setMaterialBreakdownTotals] = useState<Map<string, number>>(new Map());
 
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const [summaryData, timeSeriesData, categoryDataResult, materialData, clientsData] =
+      const [summaryData, timeSeriesData, categoryDataResult, materialData, clientsData, materialTotals] =
         await Promise.all([
           AnalyticsService.getSummary(timeRange),
           AnalyticsService.getTimeSeries(timeRange),
           AnalyticsService.getCategoryData(timeRange),
           AnalyticsService.getMaterialBreakdown(timeRange),
           AnalyticsService.getTopClients(timeRange),
+          AnalyticsService.getMaterialBreakdownTotalsPerInvoice(timeRange),
         ]);
 
       setSummary(summaryData);
@@ -37,6 +39,7 @@ export const useDashboardData = (timeRange: TimeRange) => {
       setCategoryData(categoryDataResult);
       setMaterialBreakdown(materialData);
       setTopClients(clientsData);
+      setMaterialBreakdownTotals(materialTotals);
     } catch (error) {
       console.error('Error loading analytics:', error);
     } finally {
@@ -87,6 +90,7 @@ export const useDashboardData = (timeRange: TimeRange) => {
     materialBreakdown,
     topClients,
     invoices,
+    materialBreakdownTotals,
     loadMaterialsForInvoice,
     updateLocalInvoiceStatus,
     refetchData,

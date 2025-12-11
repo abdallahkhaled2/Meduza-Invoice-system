@@ -2,6 +2,7 @@ import React from 'react';
 import type { MaterialBreakdown } from '../../types/dashboard.types';
 import type { Invoice } from '../../types/invoice.types';
 import { CURRENCY, CURRENCY_LOCALE } from '../../constants/company.constants';
+import { escapeCSV, downloadCSV } from '../../utils/export.utils';
 
 interface MaterialBreakdownTableProps {
   materials: MaterialBreakdown[];
@@ -28,13 +29,6 @@ export const MaterialBreakdownTable: React.FC<MaterialBreakdownTableProps> = ({
       ? `${selectedInvoice.invoice_no} - ${selectedInvoice.project_name}`
       : 'All Invoices';
 
-    const escapeCSV = (val: string) => {
-      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-        return `"${val.replace(/"/g, '""')}"`;
-      }
-      return val;
-    };
-
     lines.push(`Material Breakdown - ${invoiceLabel}`);
     lines.push('');
     lines.push(['Material', 'Total Quantity', 'Unit', 'Unit Cost', 'Total Cost', 'Used In'].map(escapeCSV).join(','));
@@ -55,13 +49,9 @@ export const MaterialBreakdownTable: React.FC<MaterialBreakdownTableProps> = ({
     lines.push('');
     lines.push(['TOTAL', '', '', '', totalCost.toFixed(2), ''].join(','));
 
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `material-breakdown-${selectedInvoice?.invoice_no || 'all'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csvContent = lines.join('\n');
+    const filename = `material-breakdown-${selectedInvoice?.invoice_no || 'all'}.csv`;
+    downloadCSV(filename, csvContent);
   };
 
   return (
