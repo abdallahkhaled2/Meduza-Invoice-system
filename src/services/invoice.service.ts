@@ -38,7 +38,7 @@ export class InvoiceService {
 
     return data.map((inv: any) => ({
       ...inv,
-      clients: inv.clients && inv.clients.length > 0 ? inv.clients[0] : null,
+      clients: inv.clients || null,
     })) as Invoice[];
   }
 
