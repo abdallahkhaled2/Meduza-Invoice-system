@@ -222,6 +222,7 @@ const App: React.FC = () => {
   const [duplicateCustomerModalOpen, setDuplicateCustomerModalOpen] = useState(false);
   const [matchingCustomer, setMatchingCustomer] = useState<{ id: string; name: string; company: string | null } | null>(null);
   const [forceCreateNewClient, setForceCreateNewClient] = useState(false);
+  const [isCustomerSelectedFromDropdown, setIsCustomerSelectedFromDropdown] = useState(false);
 
   interface ExistingCustomer {
     id: string;
@@ -381,6 +382,7 @@ const App: React.FC = () => {
     setVatRate(14);
     setDiscount(0);
     setNotes('');
+    setIsCustomerSelectedFromDropdown(false);
   };
 
   const clearForm = () => {
@@ -412,6 +414,12 @@ const App: React.FC = () => {
         `The following items are missing dimensions: ${itemDescriptions}. Please add dimensions (H × W × T cm) before submitting.`,
         8000
       );
+      return;
+    }
+
+    if (isCustomerSelectedFromDropdown) {
+      setForceCreateNewClient(false);
+      setSubmitConfirmOpen(true);
       return;
     }
 
@@ -451,6 +459,7 @@ const App: React.FC = () => {
         email: '',
         siteAddress: '',
       });
+      setIsCustomerSelectedFromDropdown(false);
       return;
     }
     const selectedCustomer = existingCustomers.find((c) => c.id === customerId);
@@ -463,6 +472,7 @@ const App: React.FC = () => {
         email: selectedCustomer.email || '',
         siteAddress: '',
       });
+      setIsCustomerSelectedFromDropdown(true);
     }
   };
 
@@ -800,7 +810,10 @@ const App: React.FC = () => {
               className="input"
               type="text"
               value={client.name}
-              onChange={(e) => setClient({ ...client, name: e.target.value })}
+              onChange={(e) => {
+                setClient({ ...client, name: e.target.value });
+                setIsCustomerSelectedFromDropdown(false);
+              }}
               required
               style={{
                 borderColor: !client.name || client.name === 'Customer Name' ? '#ef4444' : undefined,
@@ -810,12 +823,18 @@ const App: React.FC = () => {
           <TextInput
             label="Client Company"
             value={client.company}
-            onChange={(v) => setClient({ ...client, company: v })}
+            onChange={(v) => {
+              setClient({ ...client, company: v });
+              setIsCustomerSelectedFromDropdown(false);
+            }}
           />
           <TextInput
             label="Billing Address"
             value={client.address}
-            onChange={(v) => setClient({ ...client, address: v })}
+            onChange={(v) => {
+              setClient({ ...client, address: v });
+              setIsCustomerSelectedFromDropdown(false);
+            }}
           />
           <label className="field">
             <span className="field-label">Phone</span>
@@ -826,6 +845,7 @@ const App: React.FC = () => {
               onChange={(e) => {
                 const val = e.target.value.replace(/[^0-9+\s-]/g, '');
                 setClient({ ...client, phone: val });
+                setIsCustomerSelectedFromDropdown(false);
               }}
               placeholder="+20 100 000 0000"
             />
@@ -833,12 +853,18 @@ const App: React.FC = () => {
           <TextInput
             label="Email"
             value={client.email}
-            onChange={(v) => setClient({ ...client, email: v })}
+            onChange={(v) => {
+              setClient({ ...client, email: v });
+              setIsCustomerSelectedFromDropdown(false);
+            }}
           />
           <TextInput
             label="Site / Delivery Address"
             value={client.siteAddress}
-            onChange={(v) => setClient({ ...client, siteAddress: v })}
+            onChange={(v) => {
+              setClient({ ...client, siteAddress: v });
+              setIsCustomerSelectedFromDropdown(false);
+            }}
           />
         </section>
 
