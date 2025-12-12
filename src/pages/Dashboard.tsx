@@ -316,7 +316,10 @@ const Dashboard: React.FC = () => {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <h3 style={{ margin: '0 0 12px 0', color: '#9ca3af', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Financial Overview
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
           <StatCard
             title="Total Sales"
             value={formatCurrency(summary?.totalRevenue || 0)}
@@ -332,6 +335,12 @@ const Dashboard: React.FC = () => {
             value={formatCurrency(summary?.profitMargin || 0)}
             color="#22c55e"
           />
+        </div>
+
+        <h3 style={{ margin: '0 0 12px 0', color: '#9ca3af', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Invoice Statistics
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
           <StatCard
             title="Total Invoices"
             value={formatNumber(summary?.totalInvoices || 0)}
@@ -349,7 +358,10 @@ const Dashboard: React.FC = () => {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <h3 style={{ margin: '0 0 12px 0', color: '#9ca3af', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Invoice Status
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
           <StatCard
             title="Draft Invoices"
             value={formatNumber(summary?.draftCount || 0)}
