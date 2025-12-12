@@ -113,6 +113,36 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleBulkDeleteInvoices = async (invoiceIds: string[], password: string): Promise<boolean> => {
+    if (!user?.email || !password || invoiceIds.length === 0) {
+      return false;
+    }
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: password,
+      });
+
+      if (signInError) {
+        return false;
+      }
+
+      const { success, deletedCount } = await InvoiceService.bulkDeleteInvoices(invoiceIds);
+      if (success) {
+        toast.success(
+          `${deletedCount} Invoice${deletedCount > 1 ? 's' : ''} Deleted`,
+          `${deletedCount} invoice${deletedCount > 1 ? 's have' : ' has'} been permanently deleted.`
+        );
+        refetchData();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   if (loading) {
     return (
       <div
@@ -296,6 +326,7 @@ const Dashboard: React.FC = () => {
             onViewInvoice={handleViewInvoice}
             onPreviewInvoice={handlePreviewInvoice}
             onDeleteInvoice={handleDeleteInvoice}
+            onBulkDeleteInvoices={handleBulkDeleteInvoices}
           />
         </ChartCard>
       </div>

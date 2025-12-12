@@ -10,6 +10,7 @@ interface InvoicesTableProps {
   onViewInvoice: (invoiceId: string) => void;
   onPreviewInvoice: (invoiceId: string) => void;
   onDeleteInvoice?: (invoiceId: string, password: string) => Promise<boolean>;
+  onBulkDeleteInvoices?: (invoiceIds: string[], password: string) => Promise<boolean>;
 }
 
 export const InvoicesTable: React.FC<InvoicesTableProps> = ({
@@ -19,6 +20,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   onViewInvoice,
   onPreviewInvoice,
   onDeleteInvoice,
+  onBulkDeleteInvoices,
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,7 +35,6 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   const [bulkDeletePassword, setBulkDeletePassword] = useState('');
   const [bulkDeleteError, setBulkDeleteError] = useState('');
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [bulkDeleteProgress, setBulkDeleteProgress] = useState({ current: 0, total: 0 });
 
   const getCustomerName = (invoice: Invoice): string => {
     return invoice.client_name || invoice.clients?.name || '';
@@ -168,12 +169,11 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
   const openBulkDeleteModal = () => {
     setBulkDeletePassword('');
     setBulkDeleteError('');
-    setBulkDeleteProgress({ current: 0, total: selectedIds.size });
     setBulkDeleteModalOpen(true);
   };
 
   const handleBulkDelete = async () => {
-    if (!onDeleteInvoice || selectedIds.size === 0) return;
+    if (!onBulkDeleteInvoices || selectedIds.size === 0) return;
 
     if (!bulkDeletePassword) {
       setBulkDeleteError('Please enter your password');
@@ -184,32 +184,22 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
     setBulkDeleteError('');
 
     const idsToDelete = Array.from(selectedIds);
-    let successCount = 0;
-    let failCount = 0;
 
-    for (let i = 0; i < idsToDelete.length; i++) {
-      setBulkDeleteProgress({ current: i + 1, total: idsToDelete.length });
-      try {
-        const success = await onDeleteInvoice(idsToDelete[i], bulkDeletePassword);
-        if (success) {
-          successCount++;
-        } else {
-          failCount++;
-          if (i === 0) {
-            setBulkDeleteError('Failed to delete. Please check your password.');
-            setBulkDeleting(false);
-            return;
-          }
-        }
-      } catch {
-        failCount++;
+    try {
+      const success = await onBulkDeleteInvoices(idsToDelete, bulkDeletePassword);
+      if (success) {
+        setBulkDeleting(false);
+        setBulkDeleteModalOpen(false);
+        setBulkDeletePassword('');
+        setSelectedIds(new Set());
+      } else {
+        setBulkDeleteError('Failed to delete invoices. Please check your password.');
+        setBulkDeleting(false);
       }
+    } catch {
+      setBulkDeleteError('An error occurred. Please try again.');
+      setBulkDeleting(false);
     }
-
-    setBulkDeleting(false);
-    setBulkDeleteModalOpen(false);
-    setBulkDeletePassword('');
-    setSelectedIds(new Set());
   };
 
   const allSelected =
@@ -354,7 +344,7 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
         >
           <span>{selectedIds.size} invoice(s) selected</span>
           <div style={{ display: 'flex', gap: 8 }}>
-            {onDeleteInvoice && (
+            {onBulkDeleteInvoices && (
               <button
                 onClick={openBulkDeleteModal}
                 style={{
@@ -697,30 +687,6 @@ export const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 if (e.key === 'Enter' && !bulkDeleting) handleBulkDelete();
               }}
             />
-            {bulkDeleting && (
-              <div style={{ marginBottom: 12 }}>
-                <div
-                  style={{
-                    height: 4,
-                    background: '#374151',
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${(bulkDeleteProgress.current / bulkDeleteProgress.total) * 100}%`,
-                      background: '#ef4444',
-                      transition: 'width 0.2s ease',
-                    }}
-                  />
-                </div>
-                <p style={{ margin: '8px 0 0', color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
-                  Deleting {bulkDeleteProgress.current} of {bulkDeleteProgress.total}...
-                </p>
-              </div>
-            )}
             {bulkDeleteError && (
               <p style={{ margin: '0 0 12px', color: '#ef4444', fontSize: 13 }}>{bulkDeleteError}</p>
             )}

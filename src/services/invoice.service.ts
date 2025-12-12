@@ -84,6 +84,38 @@ export class InvoiceService {
     }
   }
 
+  static async bulkDeleteInvoices(invoiceIds: string[]): Promise<{ success: boolean; deletedCount: number }> {
+    try {
+      const { data: items } = await supabase
+        .from('invoice_items')
+        .select('id')
+        .in('invoice_id', invoiceIds);
+
+      if (items && items.length > 0) {
+        const itemIds = items.map((item) => item.id);
+
+        await supabase
+          .from('item_materials')
+          .delete()
+          .in('invoice_item_id', itemIds);
+
+        await supabase
+          .from('invoice_items')
+          .delete()
+          .in('invoice_id', invoiceIds);
+      }
+
+      const { error, count } = await supabase
+        .from('invoices')
+        .delete({ count: 'exact' })
+        .in('id', invoiceIds);
+
+      return { success: !error, deletedCount: count || 0 };
+    } catch {
+      return { success: false, deletedCount: 0 };
+    }
+  }
+
   static async createPreviewPayload(invoiceId: string): Promise<InvoicePayload | null> {
     const result = await getInvoiceDetails(invoiceId);
     if (!result.success || !result.data) {
