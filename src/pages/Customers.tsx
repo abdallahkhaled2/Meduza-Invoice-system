@@ -30,6 +30,9 @@ const Customers: React.FC = () => {
     phone: '',
     email: '',
   });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadCustomers = async () => {
     setLoading(true);
@@ -100,20 +103,28 @@ const Customers: React.FC = () => {
     }
   };
 
-  const handleDeleteCustomer = async (customerId: string, customerName: string) => {
-    if (!confirm(`Are you sure you want to delete "${customerName}"? This cannot be undone.`)) {
-      return;
-    }
+  const openDeleteModal = (customerId: string, customerName: string) => {
+    setCustomerToDelete({ id: customerId, name: customerName });
+    setShowDeleteModal(true);
+  };
 
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+
+    setDeleting(true);
     try {
-      const { error } = await supabase.from('clients').delete().eq('id', customerId);
+      const { error } = await supabase.from('clients').delete().eq('id', customerToDelete.id);
 
       if (error) throw error;
 
       toast.success('Success', 'Customer deleted successfully');
+      setShowDeleteModal(false);
+      setCustomerToDelete(null);
       loadCustomers();
     } catch (error) {
       toast.error('Error', 'Failed to delete customer. Customer may have associated invoices.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -304,7 +315,7 @@ const Customers: React.FC = () => {
                           View Invoices
                         </button>
                         <button
-                          onClick={() => handleDeleteCustomer(customer.id, customer.name)}
+                          onClick={() => openDeleteModal(customer.id, customer.name)}
                           style={{
                             padding: '6px 12px',
                             borderRadius: 6,
@@ -567,6 +578,84 @@ const Customers: React.FC = () => {
                 }}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && customerToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => {
+            if (!deleting) {
+              setShowDeleteModal(false);
+              setCustomerToDelete(null);
+            }
+          }}
+        >
+          <div
+            style={{
+              background: '#1f2937',
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 420,
+              width: '90%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 16px', color: '#ef4444', fontSize: 18 }}>
+              Delete Customer
+            </h3>
+            <p style={{ margin: '0 0 16px', color: '#e5e7eb', fontSize: 14 }}>
+              Are you sure you want to delete "{customerToDelete.name}"?
+            </p>
+            <p style={{ margin: '0 0 20px', color: '#9ca3af', fontSize: 13 }}>
+              This action cannot be undone. If this customer has associated invoices, those invoices will retain the customer name but will no longer be linked to a customer record.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setCustomerToDelete(null);
+                }}
+                disabled={deleting}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 6,
+                  border: '1px solid #4b5563',
+                  background: 'transparent',
+                  color: '#e5e7eb',
+                  fontSize: 14,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteCustomer}
+                disabled={deleting}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: deleting ? '#6b7280' : '#ef4444',
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {deleting ? 'Deleting...' : 'Delete Customer'}
               </button>
             </div>
           </div>
